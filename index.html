@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Simulado Histologia</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+}
+
+/* CENTRALIZA INÍCIO */
+.center{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
+    padding:20px;
+}
+
+/* CARD */
+.card{
+    background:#020617;
+    padding:25px;
+    border-radius:20px;
+    box-shadow:0 0 25px rgba(0,0,0,.5);
+}
+
+/* TOPO ESTILO PROVA */
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:15px;
+}
+
+.badge{
+    background:#1e293b;
+    padding:10px 15px;
+    border-radius:10px;
+}
+
+/* PROGRESSO */
+.progress{
+    height:10px;
+    background:#1e293b;
+    border-radius:20px;
+    overflow:hidden;
+    margin-bottom:15px;
+}
+
+.progress-fill{
+    height:100%;
+    width:0%;
+    background:#22c55e;
+}
+
+/* BOTÕES */
+button{
+    padding:14px;
+    margin:8px 0;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:15px;
+}
+
+.option{
+    width:100%;
+    background:#1e293b;
+    color:white;
+    text-align:left;
+}
+
+.option:hover{background:#334155;}
+
+.correct{background:#16a34a!important;}
+.wrong{background:#dc2626!important;}
+
+.next{
+    width:100%;
+    margin-top:10px;
+    background:#22c55e;
+    color:#052e16;
+    font-weight:bold;
+}
+
+/* IMAGEM */
+img{
+    width:100%;
+    max-height:400px;
+    object-fit:contain;
+    border-radius:12px;
+    background:white;
+    cursor:pointer;
+}
+
+/* FEEDBACK */
+.feedback{
+    margin-top:15px;
+    padding:15px;
+    border-radius:12px;
+    text-align:left;
+}
+
+.ok{
+    background:#052e16;
+    border-left:5px solid #22c55e;
+}
+
+.err{
+    background:#450a0a;
+    border-left:5px solid #ef4444;
+}
+
+/* ZOOM */
+#zoom{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:black;
+    align-items:center;
+    justify-content:center;
+}
+
+#zoom img{
+    max-width:90%;
+}
+
+/* RESULTADO */
+.result{
+    text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<div id="app"></div>
+
+<div id="zoom" onclick="this.style.display='none'">
+    <img id="zoomImg">
+</div>
+
+<script>
+
+/* BANCO */
+const banco = [
+{img:"img/adiposo.jpg",q:"Qual tecido?",a:["Adiposo","Muscular","Epitelial","Nervoso"],c:0,exp:"Células grandes e claras (adipócitos).",erro:"Outros tecidos não têm células com aspecto de bolha.",dica:"Bolhas grandes = gordura."},
+
+{img:"img/musculo_esqueletico.jpg",q:"Qual músculo?",a:["Liso","Cardíaco","Esquelético","Conjuntivo"],c:2,exp:"Estrias bem visíveis.",erro:"Sem estrias não seria esse tecido.",dica:"Listras = esquelético."},
+
+{img:"img/musculo_liso.jpg",q:"Qual músculo?",a:["Liso","Cardíaco","Esquelético","Ósseo"],c:0,exp:"Sem estrias.",erro:"Se não tem listra, não é estriado.",dica:"Sem listra = liso."},
+
+{img:"img/musculo_cardiaco.jpg",q:"Qual músculo?",a:["Liso","Cardíaco","Esquelético","Epitelial"],c:1,exp:"Tem discos intercalares.",erro:"O esquelético não tem discos.",dica:"Estria + linhas = cardíaco."},
+
+{img:"img/conjuntivo_denso.jpg",q:"Qual tecido?",a:["Frouxo","Denso","Adiposo","Cartilagem"],c:1,exp:"Fibras organizadas.",erro:"Frouxo teria fibras soltas.",dica:"Fibras alinhadas = denso."},
+
+{img:"img/conjuntivo_frouxo.jpg",q:"Qual tecido?",a:["Frouxo","Denso","Muscular","Ósseo"],c:0,exp:"Fibras dispersas.",erro:"Denso seria compacto.",dica:"Muito espaço = frouxo."},
+
+{img:"img/epitelio_estratificado.jpg",q:"Tipo de epitélio?",a:["Simples","Estratificado","Pseudo","Muscular"],c:1,exp:"Várias camadas.",erro:"Simples tem 1 camada.",dica:"Várias camadas = estratificado."},
+
+{img:"img/pseudoestratificado.jpg",q:"Tipo de epitélio?",a:["Simples","Estratificado","Pseudoestratificado","Conjuntivo"],c:2,exp:"Núcleos em alturas diferentes.",erro:"Não são várias camadas reais.",dica:"Parece vários, mas não é."},
+
+{img:"img/epitelio_simples.jpg",q:"Pegadinha:",a:["Epitélio simples","Túbulo renal","Muscular","Cartilagem"],c:1,exp:"É órgão (rim).",erro:"A resposta mais específica é correta.",dica:"Imagem de órgão = detalhe específico."},
+
+{img:"img/osso.jpg",q:"Qual tecido?",a:["Ósseo","Cartilagem","Conjuntivo","Adiposo"],c:0,exp:"Matriz rígida.",erro:"Cartilagem é mais homogênea.",dica:"Rigidez = osso."},
+
+{img:"img/cartilagem_hialina.jpg",q:"Qual cartilagem?",a:["Hialina","Fibrosa","Elástica","Óssea"],c:0,exp:"Lacunas claras.",erro:"Outras têm mais fibras.",dica:"Buraquinhos = hialina."},
+
+{img:"img/cartilagem_fibrosa.jpg",q:"Qual cartilagem?",a:["Hialina","Fibrosa","Elástica","Adiposa"],c:1,exp:"Muitas fibras.",erro:"Pode parecer conjuntivo.",dica:"Mais fibra = fibrosa."},
+
+{img:"img/cartilagem_elastica.jpg",q:"Qual cartilagem?",a:["Elástica","Hialina","Fibrosa","Muscular"],c:0,exp:"Mais irregular.",erro:"Difere da hialina.",dica:"Mais “bagunçada”."}
+];
+
+while(banco.length<30){
+    banco.push(...banco.slice(0,5));
+}
+
+/* VARIÁVEIS */
+let perguntas=[], atual=0, acertos=0, erros=0, listaErros=[];
+
+/* TELA INICIAL */
+function inicio(){
+document.body.className="center";
+document.getElementById("app").innerHTML=`
+<div class="card">
+<h1>🧬 Simulado de Histologia</h1>
+<p>Escolha a quantidade:</p>
+<button onclick="start(10)">10 questões</button>
+<button onclick="start(20)">20 questões</button>
+<button onclick="start(30)">30 questões</button>
+</div>`;
+}
+
+/* START */
+function start(qtd){
+document.body.className="";
+perguntas=[...banco].sort(()=>Math.random()-0.5).slice(0,qtd);
+atual=0;acertos=0;erros=0;listaErros=[];
+load();
+}
+
+/* LOAD */
+function load(){
+let q=perguntas[atual];
+
+let prog=(atual/perguntas.length)*100;
+
+let html=`
+<div class="container">
+<div class="card">
+
+<div class="topbar">
+<div class="badge">Questão ${atual+1}/${perguntas.length}</div>
+<div class="badge">✅ ${acertos} | ❌ ${erros}</div>
+</div>
+
+<div class="progress"><div class="progress-fill" style="width:${prog}%"></div></div>
+
+<img src="${q.img}" onclick="zoom('${q.img}')">
+
+<p>${q.q}</p>
+`;
+
+q.a.forEach((alt,i)=>{
+html+=`<button class="option" onclick="responder(${i})">${alt}</button>`;
+});
+
+html+=`<div id="feedback"></div></div></div>`;
+document.getElementById("app").innerHTML=html;
+}
+
+/* RESPONDER */
+function responder(i){
+let q=perguntas[atual];
+let btns=document.querySelectorAll(".option");
+
+btns.forEach((b,index)=>{
+b.disabled=true;
+if(index===q.c) b.classList.add("correct");
+if(index===i && i!==q.c) b.classList.add("wrong");
+});
+
+let fb=document.getElementById("feedback");
+
+if(i===q.c){
+acertos++;
+fb.innerHTML=`
+<div class="feedback ok">
+<h3>✅ Acertou</h3>
+<p>${q.exp}</p>
+<p><strong>Dica:</strong> ${q.dica}</p>
+<button class="next" onclick="next()">Próxima</button>
+</div>`;
+}else{
+erros++;
+listaErros.push(q);
+fb.innerHTML=`
+<div class="feedback err">
+<h3>❌ Errou</h3>
+<p><strong>Correta:</strong> ${q.a[q.c]}</p>
+<p>${q.exp}</p>
+<p><strong>Erro:</strong> ${q.erro}</p>
+<p><strong>Dica:</strong> ${q.dica}</p>
+<button class="next" onclick="next()">Próxima</button>
+</div>`;
+}
+}
+
+/* NEXT */
+function next(){
+atual++;
+if(atual<perguntas.length){
+load();
+}else{
+resultado();
+}
+}
+
+/* RESULTADO */
+function resultado(){
+let total=perguntas.length;
+let perc=Math.round((acertos/total)*100);
+
+let html=`
+<div class="container">
+<div class="card result">
+<h2>Resultado</h2>
+<h1>${perc}%</h1>
+<p>Acertos: ${acertos}</p>
+<p>Erros: ${erros}</p>
+<button onclick="inicio()">Refazer</button>
+`;
+
+if(listaErros.length){
+html+="<h3>Revisão dos erros</h3>";
+listaErros.forEach(e=>{
+html+=`
+<div>
+<img src="${e.img}">
+<p>${e.q}</p>
+<p>Correta: ${e.a[e.c]}</p>
+<p>${e.exp}</p>
+</div>`;
+});
+}
+
+html+="</div></div>";
+document.getElementById("app").innerHTML=html;
+}
+
+/* ZOOM */
+function zoom(src){
+document.getElementById("zoomImg").src=src;
+document.getElementById("zoom").style.display="flex";
+}
+
+inicio();
+
+</script>
+
+</body>
+</html>
